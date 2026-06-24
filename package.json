@@ -1,0 +1,14 @@
+{
+  "name": "incomplete-data-report",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Generate the Incomplete Project/Property Data .xlsx report from the database.",
+  "scripts": {
+    "generate": "node generate-report.mjs"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pg": "^8.13.1"
+  }
+}
