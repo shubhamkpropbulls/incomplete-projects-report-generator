@@ -96,6 +96,7 @@ LEFT JOIN builder b ON b.id = p.builder_id AND b.is_active = TRUE
 LEFT JOIN accessibility_counts ac ON ac.project_id = p.id
 LEFT JOIN property_counts      pc ON pc.project_id = p.id
 WHERE p.is_active = TRUE
+  AND UPPER(BTRIM(p.country)) IN ('IN', 'INDIA')
   AND (
       (CASE WHEN p.latitude IS NOT NULL AND p.longitude IS NOT NULL
              AND NULLIF(BTRIM(p.formatted_address), '') IS NOT NULL THEN 0 ELSE 1 END)
@@ -137,6 +138,7 @@ SELECT
        THEN 'Present' ELSE 'Missing' END AS unit_config_status
 FROM property prop
 INNER JOIN project proj ON proj.id = prop.project_id AND proj.is_active = TRUE
+  AND UPPER(BTRIM(proj.country)) IN ('IN', 'INDIA')
 LEFT JOIN "user" usr ON usr.id = prop.created_by_id
 LEFT JOIN unit_counts uc ON uc.property_id = prop.id
 WHERE prop.is_active = TRUE
