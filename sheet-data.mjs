@@ -134,3 +134,47 @@ export function buildPropertyRow(rec, r, preserve) {
 export function buildSheetValues(headers, records, rowBuilder, preserve) {
   return [headers, ...records.map((rec, i) => rowBuilder(rec, i + 2, preserve))];
 }
+
+export const PROJECT_ARCHIVE_HEADERS = [
+  "Project", "Project ID", "Notes / Comments", "Status", "Resolved At",
+];
+export const PROPERTY_ARCHIVE_HEADERS = [
+  "Project Name", "Property Name", "Property ID", "Project ID",
+  "Note / Comments", "Status", "Resolved At",
+];
+export const PROJECT_ARCHIVE_KEY = 1;   // Project ID column in archive layout
+export const PROPERTY_ARCHIVE_KEY = 2;  // Property ID column in archive layout
+
+export function buildProjectArchiveRow(prevRow, resolvedAt) {
+  return [
+    cell(prevRow[0]),   // Project
+    cell(prevRow[20]),  // Project ID
+    cell(prevRow[18]),  // Notes / Comments
+    cell(prevRow[19]),  // Status
+    resolvedAt,
+  ];
+}
+
+export function buildPropertyArchiveRow(prevRow, resolvedAt) {
+  return [
+    cell(prevRow[0]),   // Project Name
+    cell(prevRow[2]),   // Property Name
+    cell(prevRow[13]),  // Property ID
+    cell(prevRow[14]),  // Project ID
+    cell(prevRow[11]),  // Note / Comments
+    cell(prevRow[12]),  // Status
+    resolvedAt,
+  ];
+}
+
+export function dedupeArchiveRows(existingRows, newRows, keyIndex) {
+  const seen = new Set();
+  for (let i = 1; i < existingRows.length; i++) {
+    const id = cell((existingRows[i] ?? [])[keyIndex]).trim();
+    if (id) seen.add(id);
+  }
+  return newRows.filter((r) => {
+    const id = cell(r[keyIndex]).trim();
+    return id && !seen.has(id);
+  });
+}
