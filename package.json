@@ -5,9 +5,12 @@
   "type": "module",
   "description": "Generate the Incomplete Project/Property Data .xlsx report from the database.",
   "scripts": {
-    "generate": "node generate-report.mjs"
+    "generate": "node generate-report.mjs",
+    "sync": "node sync-sheet.mjs",
+    "test": "node --test"
   },
   "dependencies": {
+    "googleapis": "^173.0.0",
     "jszip": "^3.10.1",
     "pg": "^8.13.1"
   }

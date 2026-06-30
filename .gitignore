@@ -2,3 +2,4 @@ node_modules/
 *.xlsx
 !template.xlsx
 .env
+service-account.json
