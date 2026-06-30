@@ -128,8 +128,6 @@ SELECT
   prop.name        AS property_name,
   prop.created_at  AS created_at,
   usr.name         AS creator_name,
-  CASE WHEN prop.base_price_per_sqft IS NOT NULL AND prop.base_price_per_sqft > 0
-       THEN 'Present' ELSE 'Missing' END AS base_price_status,
   CASE WHEN prop.total_floors IS NOT NULL AND prop.total_floors > 0
        THEN 'Present' ELSE 'Missing' END AS total_floors_status,
   CASE WHEN prop.units_per_floor IS NOT NULL AND prop.units_per_floor > 0
@@ -143,8 +141,7 @@ LEFT JOIN "user" usr ON usr.id = prop.created_by_id
 LEFT JOIN unit_counts uc ON uc.property_id = prop.id
 WHERE prop.is_active = TRUE
   AND (
-      (CASE WHEN prop.base_price_per_sqft IS NOT NULL AND prop.base_price_per_sqft > 0 THEN 0 ELSE 1 END)
-    + (CASE WHEN prop.total_floors IS NOT NULL AND prop.total_floors > 0 THEN 0 ELSE 1 END)
+      (CASE WHEN prop.total_floors IS NOT NULL AND prop.total_floors > 0 THEN 0 ELSE 1 END)
     + (CASE WHEN prop.units_per_floor IS NOT NULL AND prop.units_per_floor > 0 THEN 0 ELSE 1 END)
     + (CASE WHEN COALESCE(uc.c, 0) > 0 THEN 0 ELSE 1 END)
   ) > 0
@@ -318,70 +315,68 @@ function projectDV(L) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Property sheet — 16 columns (A..P). All hidden helper columns removed; the
-// four status columns are now contiguous (G..J). Property ID + Project ID
+// Property sheet — 15 columns (A..O). All hidden helper columns removed; the
+// three status columns are now contiguous (G..I). Property ID + Project ID
 // appended.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PROPERTY_HEADERS = [
   ["Project Name", 1], ["Project Link", 1], ["Property Name", 1], ["Link", 13],
-  ["Created At", 14], ["Created By", 1], ["Base Price", 1], ["Total Floor ", 1],
+  ["Created At", 14], ["Created By", 1], ["Total Floor ", 1],
   ["Units per floor ", 1], ["Unit configurations", 1], ["Missing Count", 1],
   ["Missing Data Summery", 2], ["Note / Comments", 15], ["Status", 13],
   ["Property ID", 1], ["Project ID", 1],
 ];
 const PROPERTY_WIDTHS = [
-  31, 13, 36, 13, 18, 18, 16, 16, 18, 19, 16, 67, 35, 18, 40, 40,
+  31, 13, 36, 13, 18, 18, 16, 18, 19, 16, 67, 35, 18, 40, 40,
 ];
 const PROPERTY_TABLE_COLS = PROPERTY_HEADERS.map(([n]) => n);
 
 function propertySummaryFormula(r) {
   return (
     `_xlfn.TEXTJOIN(CHAR(10), TRUE, ` +
-    `IF(G${r}="Missing", "Missing base price", ""), ` +
-    `IF(H${r}="Missing", "Missing total floors", ""), ` +
-    `IF(I${r}="Missing", "Missing units per floor", ""), ` +
-    `IF(J${r}="Missing", "No unit configurations", ""))`
+    `IF(G${r}="Missing", "Missing total floors", ""), ` +
+    `IF(H${r}="Missing", "Missing units per floor", ""), ` +
+    `IF(I${r}="Missing", "No unit configurations", ""))`
   );
 }
 
 function propertyRow(r, rec) {
   const c = cellFns(r);
   return (
-    `<row r="${r}" spans="1:16">` +
+    `<row r="${r}" spans="1:15">` +
     c.txt(1, 5, rec.project_name) +
     c.fStr(2, 9, `HYPERLINK("${ADMIN_BASE}/projects/${rec.project_id}","Link")`) +
     c.txt(3, 5, rec.property_name) +
     c.fStr(4, 9, `HYPERLINK("${ADMIN_BASE}/properties/${rec.property_id}","Link")`) +
     c.date(5, 17, rec.created_at) +
     c.txt(6, 5, rec.creator_name) +
-    c.txt(7, 5, rec.base_price_status) +
-    c.txt(8, 5, rec.total_floors_status) +
-    c.txt(9, 5, rec.units_per_floor_status) +
-    c.txt(10, 5, rec.unit_config_status) +
-    c.fNum(11, 5, `COUNTIF(G${r}:J${r},"Missing")`) +
-    c.fStr(12, 8, propertySummaryFormula(r)) +
-    c.empty(13, 18) + // Note / Comments (blank for the team)
-    c.txt(14, 11, "Not Updated") +
-    c.txt(15, 5, rec.property_id) +
-    c.txt(16, 5, rec.project_id) +
+    c.txt(7, 5, rec.total_floors_status) +
+    c.txt(8, 5, rec.units_per_floor_status) +
+    c.txt(9, 5, rec.unit_config_status) +
+    c.fNum(10, 5, `COUNTIF(G${r}:I${r},"Missing")`) +
+    c.fStr(11, 8, propertySummaryFormula(r)) +
+    c.empty(12, 18) + // Note / Comments (blank for the team)
+    c.txt(13, 11, "Not Updated") +
+    c.txt(14, 5, rec.property_id) +
+    c.txt(15, 5, rec.project_id) +
     `</row>`
   );
 }
 
 function propertyCF(L) {
   return (
-    `<conditionalFormatting sqref="A2:P${L}"><cfRule type="expression" dxfId="8" priority="3"><formula>$N2="Should be Deleted"</formula></cfRule></conditionalFormatting>` +
-    `<conditionalFormatting sqref="G2:J${L}"><cfRule type="cellIs" dxfId="7" priority="1" operator="equal"><formula>"Missing"</formula></cfRule><cfRule type="cellIs" dxfId="6" priority="2" operator="equal"><formula>"Present"</formula></cfRule></conditionalFormatting>`
+    `<conditionalFormatting sqref="A2:O${L}"><cfRule type="expression" dxfId="8" priority="3"><formula>$M2="Should be Deleted"</formula></cfRule></conditionalFormatting>` +
+    `<conditionalFormatting sqref="G2:I${L}"><cfRule type="cellIs" dxfId="7" priority="1" operator="equal"><formula>"Missing"</formula></cfRule><cfRule type="cellIs" dxfId="6" priority="2" operator="equal"><formula>"Present"</formula></cfRule></conditionalFormatting>`
   );
 }
 
 function propertyDV(L) {
   return (
     `<dataValidations count="3">` +
-    `<dataValidation type="list" allowBlank="1" sqref="G2:J${L}"><formula1>"Missing,Present"</formula1></dataValidation>` +
+    `<dataValidation type="list" allowBlank="1" sqref="G2:I${L}"><formula1>"Missing,Present"</formula1></dataValidation>` +
     `<dataValidation type="custom" allowBlank="1" showDropDown="1" sqref="E2:E${L}"><formula1>OR(NOT(ISERROR(DATEVALUE(E2))), AND(ISNUMBER(E2), LEFT(CELL("format", E2))="D"))</formula1></dataValidation>` +
-    `<dataValidation type="list" allowBlank="1" sqref="N2:N${L}"><formula1>"Not Updated,Updated,Should be Deleted"</formula1></dataValidation>` +
+    `<dataValidation type="list" allowBlank="1" sqref="M2:M${L}"><formula1>"Not Updated,Updated,Should be Deleted"</formula1></dataValidation>` +
     `</dataValidations>`
   );
 }
@@ -471,7 +466,7 @@ async function main() {
   s2 = rewriteSheet(s2, {
     sheetData: buildSheetData(PROPERTY_HEADERS, properties, propertyRow),
     cols: colsBlock(PROPERTY_WIDTHS),
-    lastCol: "P",
+    lastCol: "O",
     lastRow: propCfLast,
     cf: propertyCF(propCfLast),
     dv: propertyDV(propCfLast),
@@ -484,7 +479,7 @@ async function main() {
   zip.file("xl/tables/table1.xml", t1);
 
   let t2 = await zip.file("xl/tables/table2.xml").async("string");
-  t2 = rewriteTable(t2, { ref: `A1:P${propRows}`, columns: PROPERTY_TABLE_COLS });
+  t2 = rewriteTable(t2, { ref: `A1:O${propRows}`, columns: PROPERTY_TABLE_COLS });
   zip.file("xl/tables/table2.xml", t2);
 
   // Remove the two hidden sheets (keep only the 2 data sheets).
@@ -499,7 +494,7 @@ async function main() {
     /<definedNames>[\s\S]*?<\/definedNames>/,
     "<definedNames>" +
       `<definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Missing Project Data'!$A$1:$U$${projCfLast}</definedName>` +
-      `<definedName name="_xlnm._FilterDatabase" localSheetId="1" hidden="1">'Missing Property Data'!$A$1:$P$${propCfLast}</definedName>` +
+      `<definedName name="_xlnm._FilterDatabase" localSheetId="1" hidden="1">'Missing Property Data'!$A$1:$O$${propCfLast}</definedName>` +
       "</definedNames>",
   );
   wb = wb.replace('<calcPr calcId="191029"/>', '<calcPr calcId="191029" fullCalcOnLoad="1"/>');
@@ -580,7 +575,7 @@ function mockData() {
       project_id: "5ffb8202-c2b6-448d-bc71-46d293bb7999",
       project_name: "PANORAMA", property_name: "Viewmont",
       created_at: "2026-06-09T13:10:14Z", creator_name: "Shreya Sharma",
-      base_price_status: "Missing", total_floors_status: "Missing",
+      total_floors_status: "Missing",
       units_per_floor_status: "Missing", unit_config_status: "Missing",
     },
   ];

@@ -43,8 +43,7 @@ missing)_, land type, land acres, RERA number, RERA registration date, RERA
 completion date, nearby accessibility (min 3), active properties (min 1),
 images, attachments, amenities.
 
-**Property**: base price, total floors, units per floor, active unit
-configurations.
+**Property**: total floors, units per floor, active unit configurations.
 
 Only active records are considered. Properties under a soft-deleted project are
 excluded.
