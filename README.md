@@ -35,6 +35,49 @@ Remote databases use TLS automatically (`rejectUnauthorized: false`); a
 `localhost`/`127.0.0.1` URL connects without TLS. To smoke-test the output
 format without a database, run with `MOCK=1`.
 
+## Google Sheets sync (keeps team comments)
+
+`npm run sync` refreshes one permanent Google Sheet in place instead of
+producing a new file each time. The team's `Notes / Comments` and `Status`
+are preserved across refreshes (matched by the row's `Project ID` /
+`Property ID`). Rows that become complete are moved to `Resolved …` tabs.
+
+### One-time setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a
+   project and enable the **Google Sheets API**.
+2. Create a **service account**, then create a **JSON key** for it. Save the
+   downloaded file as `service-account.json` in this folder (it is gitignored).
+3. Create a blank Google Sheet. Click **Share** and add the service account's
+   email (looks like `name@project-id.iam.gserviceaccount.com`, found inside
+   the JSON key as `client_email`) as an **Editor**.
+4. Copy the spreadsheet ID from the sheet URL
+   (`https://docs.google.com/spreadsheets/d/<ID>/edit`) into `.env`:
+   ```
+   GOOGLE_SERVICE_ACCOUNT_KEY=./service-account.json
+   SPREADSHEET_ID=<ID>
+   DATABASE_URL=postgres://...
+   ```
+5. `npm install`, then `npm run sync`. The four tabs are created automatically
+   on first run.
+
+### Dry run (no Google account needed)
+
+```bash
+node sync-sheet.mjs --dry-run
+```
+Prints the grids it would write using mock data; makes no network calls.
+
+### Notes
+
+- Always share the **same** sheet link with the team — the script updates it
+  in place, so comments persist.
+- Don't rename the tabs (`Missing Project Data`, `Missing Property Data`,
+  `Resolved Project Data`, `Resolved Property Data`).
+- Run the refresh when the team is not actively editing: an edit made during
+  the few seconds the script runs could be overwritten.
+- The `.xlsx` generator (`npm run generate`) is kept as an offline fallback.
+
 ## Rules checked
 
 **Project** (each missing item = one violation): location (lat/lng + full
