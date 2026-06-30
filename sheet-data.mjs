@@ -43,3 +43,94 @@ export function selectResolvedRows(prevRows, currentIdSet, keyIndex) {
   }
   return resolved;
 }
+
+function toDateStr(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function projectCountFormula(r) {
+  return `=IF(D${r}="Missing",1,0)+IF(E${r}="Missing",1,0)+IF(F${r}="Missing",1,0)`
+    + `+IF(G${r}="Missing",1,0)+IF(H${r}="Missing",1,0)+IF(I${r}="Missing",1,0)`
+    + `+IF(J${r}="Missing",1,0)+IF(K${r}<3,1,0)+IF(L${r}<1,1,0)+IF(M${r}<1,1,0)`
+    + `+IF(N${r}<1,1,0)+IF(O${r}<1,1,0)`;
+}
+
+function projectSummaryFormula(r) {
+  return `=TEXTJOIN(CHAR(10),TRUE,`
+    + `IF(D${r}="Missing","Missing location coordinates or full address",""),`
+    + `IF(E${r}="Missing","Missing builder",""),`
+    + `IF(F${r}="Missing","Missing land type",""),`
+    + `IF(G${r}="Missing","Missing land acres",""),`
+    + `IF(H${r}="Missing","Missing RERA number",""),`
+    + `IF(I${r}="Missing","Missing RERA registration date",""),`
+    + `IF(J${r}="Missing","Missing RERA completion date",""),`
+    + `IF(K${r}<3,"Nearby accessibility: "&K${r}&" of 3 required",""),`
+    + `IF(L${r}<1,"No properties added",""),`
+    + `IF(M${r}<1,"No images",""),`
+    + `IF(N${r}<1,"No attachments",""),`
+    + `IF(O${r}<1,"No amenities",""))`;
+}
+
+function propertySummaryFormula(r) {
+  return `=TEXTJOIN(CHAR(10),TRUE,`
+    + `IF(G${r}="Missing","Missing total floors",""),`
+    + `IF(H${r}="Missing","Missing units per floor",""),`
+    + `IF(I${r}="Missing","No unit configurations",""))`;
+}
+
+const num = (v) => (v == null || v === "" ? 0 : Number(v));
+
+export function buildProjectRow(rec, r, preserve) {
+  const saved = preserve.get(cell(rec.project_id)) || {};
+  return [
+    cell(rec.project_name),
+    toDateStr(rec.created_at),
+    cell(rec.creator_name),
+    rec.location_status,
+    rec.builder_status,
+    rec.land_type_status,
+    rec.land_acres_status,
+    rec.rera_number_status,
+    rec.rera_registration_status,
+    rec.rera_completion_status,
+    num(rec.accessibility_count),
+    num(rec.property_count),
+    num(rec.image_count),
+    num(rec.attachment_count),
+    num(rec.amenity_count),
+    projectCountFormula(r),
+    projectSummaryFormula(r),
+    `=HYPERLINK("${ADMIN_BASE}/projects/${rec.project_id}","Link")`,
+    saved.notes ?? "",
+    saved.status || "Not updated",
+    cell(rec.project_id),
+  ];
+}
+
+export function buildPropertyRow(rec, r, preserve) {
+  const saved = preserve.get(cell(rec.property_id)) || {};
+  return [
+    cell(rec.project_name),
+    `=HYPERLINK("${ADMIN_BASE}/projects/${rec.project_id}","Link")`,
+    cell(rec.property_name),
+    `=HYPERLINK("${ADMIN_BASE}/properties/${rec.property_id}","Link")`,
+    toDateStr(rec.created_at),
+    cell(rec.creator_name),
+    rec.total_floors_status,
+    rec.units_per_floor_status,
+    rec.unit_config_status,
+    `=COUNTIF(G${r}:I${r},"Missing")`,
+    propertySummaryFormula(r),
+    saved.notes ?? "",
+    saved.status || "Not Updated",
+    cell(rec.property_id),
+    cell(rec.project_id),
+  ];
+}
+
+export function buildSheetValues(headers, records, rowBuilder, preserve) {
+  return [headers, ...records.map((rec, i) => rowBuilder(rec, i + 2, preserve))];
+}
