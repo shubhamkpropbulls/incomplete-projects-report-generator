@@ -178,3 +178,19 @@ export function dedupeArchiveRows(existingRows, newRows, keyIndex) {
     return id && !seen.has(id);
   });
 }
+
+/** Pure planning function: turns DB records + previous tab state into sheet values + archive rows. */
+export function planTab({ records, headers, cols, rowBuilder, idField, archiveHeaders, archiveKey, archiveBuilder, prevRows, prevArchive, resolvedAt }) {
+  const preserve = buildPreserveMap(prevRows, cols);
+  const currentIds = new Set(records.map((r) => r[idField]?.toString().trim()).filter(Boolean));
+  const values = buildSheetValues(headers, records, rowBuilder, preserve);
+
+  const resolvedPrevRows = selectResolvedRows(prevRows, currentIds, cols.key);
+  const newArchiveRows = resolvedPrevRows.map((row) => archiveBuilder(row, resolvedAt));
+  const archiveToAppend = dedupeArchiveRows(
+    prevArchive.length ? prevArchive : [archiveHeaders],
+    newArchiveRows,
+    archiveKey,
+  );
+  return { values, archiveToAppend };
+}

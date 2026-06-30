@@ -6,9 +6,9 @@ import {
   PROJECT_COLS, PROPERTY_COLS,
   PROJECT_ARCHIVE_HEADERS, PROPERTY_ARCHIVE_HEADERS,
   PROJECT_ARCHIVE_KEY, PROPERTY_ARCHIVE_KEY,
-  buildPreserveMap, selectResolvedRows,
-  buildProjectRow, buildPropertyRow, buildSheetValues,
-  buildProjectArchiveRow, buildPropertyArchiveRow, dedupeArchiveRows,
+  buildProjectRow, buildPropertyRow,
+  buildProjectArchiveRow, buildPropertyArchiveRow,
+  planTab,
 } from "./sheet-data.mjs";
 import { projectFormatRequests, propertyFormatRequests } from "./sheet-format.mjs";
 import {
@@ -18,23 +18,6 @@ import {
 
 const DRY_RUN = process.argv.includes("--dry-run");
 const today = () => new Date().toISOString().slice(0, 10);
-
-/** Plan shared by dry-run and live run: turns DB rows + prev tab into the writes. */
-function planTab({ records, headers, cols, rowBuilder, idField, archiveHeaders, archiveKey, archiveBuilder, prevRows, prevArchive }) {
-  const preserve = buildPreserveMap(prevRows, cols);
-  const currentIds = new Set(records.map((r) => r[idField]?.toString().trim()).filter(Boolean));
-  const values = buildSheetValues(headers, records, rowBuilder, preserve);
-
-  const resolvedPrevRows = selectResolvedRows(prevRows, currentIds, cols.key);
-  const stamp = today();
-  const newArchiveRows = resolvedPrevRows.map((row) => archiveBuilder(row, stamp));
-  const archiveToAppend = dedupeArchiveRows(
-    prevArchive.length ? prevArchive : [archiveHeaders],
-    newArchiveRows,
-    archiveKey,
-  );
-  return { values, archiveToAppend };
-}
 
 async function main() {
   if (DRY_RUN) process.env.MOCK = "1";
@@ -46,13 +29,13 @@ async function main() {
       records: projects, headers: PROJECT_SHEET_HEADERS, cols: PROJECT_COLS,
       rowBuilder: buildProjectRow, idField: "project_id", archiveHeaders: PROJECT_ARCHIVE_HEADERS,
       archiveKey: PROJECT_ARCHIVE_KEY, archiveBuilder: buildProjectArchiveRow,
-      prevRows: [], prevArchive: [],
+      prevRows: [], prevArchive: [], resolvedAt: today(),
     });
     const prop = planTab({
       records: properties, headers: PROPERTY_SHEET_HEADERS, cols: PROPERTY_COLS,
       rowBuilder: buildPropertyRow, idField: "property_id", archiveHeaders: PROPERTY_ARCHIVE_HEADERS,
       archiveKey: PROPERTY_ARCHIVE_KEY, archiveBuilder: buildPropertyArchiveRow,
-      prevRows: [], prevArchive: [],
+      prevRows: [], prevArchive: [], resolvedAt: today(),
     });
     console.log("\n[DRY RUN] Project grid (header + %d rows):", proj.values.length - 1);
     console.dir(proj.values, { depth: null, maxArrayLength: 5 });
@@ -102,7 +85,7 @@ async function syncOne(sheets, spreadsheetId, tabMap, cfg) {
     records: cfg.records, headers: cfg.headers, cols: cfg.cols,
     rowBuilder: cfg.rowBuilder, idField: cfg.idField, archiveHeaders: cfg.archiveHeaders,
     archiveKey: cfg.archiveKey, archiveBuilder: cfg.archiveBuilder,
-    prevRows, prevArchive,
+    prevRows, prevArchive, resolvedAt: today(),
   });
 
   // Ensure archive header exists before appending.

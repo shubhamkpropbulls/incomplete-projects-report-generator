@@ -54,6 +54,7 @@ export async function cfRuleCount(sheets, spreadsheetId, sheetId) {
 }
 
 export async function writeGrid(sheets, spreadsheetId, title, values, lastColLetter) {
+  if (!values.length) return;
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: `'${title}'!A1`,
