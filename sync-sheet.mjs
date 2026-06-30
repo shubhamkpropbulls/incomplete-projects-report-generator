@@ -20,9 +20,9 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** Plan shared by dry-run and live run: turns DB rows + prev tab into the writes. */
-function planTab({ records, headers, cols, rowBuilder, archiveHeaders, archiveKey, archiveBuilder, prevRows, prevArchive }) {
+function planTab({ records, headers, cols, rowBuilder, idField, archiveHeaders, archiveKey, archiveBuilder, prevRows, prevArchive }) {
   const preserve = buildPreserveMap(prevRows, cols);
-  const currentIds = new Set(records.map((r) => (rowBuilder === buildProjectRow ? r.project_id : r.property_id)?.toString().trim()).filter(Boolean));
+  const currentIds = new Set(records.map((r) => r[idField]?.toString().trim()).filter(Boolean));
   const values = buildSheetValues(headers, records, rowBuilder, preserve);
 
   const resolvedPrevRows = selectResolvedRows(prevRows, currentIds, cols.key);
@@ -44,13 +44,13 @@ async function main() {
   if (DRY_RUN) {
     const proj = planTab({
       records: projects, headers: PROJECT_SHEET_HEADERS, cols: PROJECT_COLS,
-      rowBuilder: buildProjectRow, archiveHeaders: PROJECT_ARCHIVE_HEADERS,
+      rowBuilder: buildProjectRow, idField: "project_id", archiveHeaders: PROJECT_ARCHIVE_HEADERS,
       archiveKey: PROJECT_ARCHIVE_KEY, archiveBuilder: buildProjectArchiveRow,
       prevRows: [], prevArchive: [],
     });
     const prop = planTab({
       records: properties, headers: PROPERTY_SHEET_HEADERS, cols: PROPERTY_COLS,
-      rowBuilder: buildPropertyRow, archiveHeaders: PROPERTY_ARCHIVE_HEADERS,
+      rowBuilder: buildPropertyRow, idField: "property_id", archiveHeaders: PROPERTY_ARCHIVE_HEADERS,
       archiveKey: PROPERTY_ARCHIVE_KEY, archiveBuilder: buildPropertyArchiveRow,
       prevRows: [], prevArchive: [],
     });
@@ -75,7 +75,7 @@ async function main() {
   await syncOne(sheets, spreadsheetId, tabMap, {
     activeTitle: "Missing Project Data", archiveTitle: "Resolved Project Data",
     records: projects, headers: PROJECT_SHEET_HEADERS, cols: PROJECT_COLS,
-    rowBuilder: buildProjectRow, archiveHeaders: PROJECT_ARCHIVE_HEADERS,
+    rowBuilder: buildProjectRow, idField: "project_id", archiveHeaders: PROJECT_ARCHIVE_HEADERS,
     archiveKey: PROJECT_ARCHIVE_KEY, archiveBuilder: buildProjectArchiveRow,
     lastCol: "U", formatReqs: projectFormatRequests,
   });
@@ -83,7 +83,7 @@ async function main() {
   await syncOne(sheets, spreadsheetId, tabMap, {
     activeTitle: "Missing Property Data", archiveTitle: "Resolved Property Data",
     records: properties, headers: PROPERTY_SHEET_HEADERS, cols: PROPERTY_COLS,
-    rowBuilder: buildPropertyRow, archiveHeaders: PROPERTY_ARCHIVE_HEADERS,
+    rowBuilder: buildPropertyRow, idField: "property_id", archiveHeaders: PROPERTY_ARCHIVE_HEADERS,
     archiveKey: PROPERTY_ARCHIVE_KEY, archiveBuilder: buildPropertyArchiveRow,
     lastCol: "O", formatReqs: propertyFormatRequests,
   });
@@ -100,7 +100,7 @@ async function syncOne(sheets, spreadsheetId, tabMap, cfg) {
 
   const { values, archiveToAppend } = planTab({
     records: cfg.records, headers: cfg.headers, cols: cfg.cols,
-    rowBuilder: cfg.rowBuilder, archiveHeaders: cfg.archiveHeaders,
+    rowBuilder: cfg.rowBuilder, idField: cfg.idField, archiveHeaders: cfg.archiveHeaders,
     archiveKey: cfg.archiveKey, archiveBuilder: cfg.archiveBuilder,
     prevRows, prevArchive,
   });
