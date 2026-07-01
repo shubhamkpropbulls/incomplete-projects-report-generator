@@ -4,6 +4,11 @@
 
 const RED = { red: 0.96, green: 0.80, blue: 0.80 };
 const GREEN = { red: 0.85, green: 0.92, blue: 0.83 };
+// Whole-row highlight for Status = "Should be Deleted": dark red fill, white text.
+const DELETE_ROW_FORMAT = {
+  backgroundColor: { red: 0.8, green: 0, blue: 0 },
+  textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 } },
+};
 
 function range(sheetId, c0, c1) {
   return { sheetId, startRowIndex: 1, startColumnIndex: c0, endColumnIndex: c1 };
@@ -40,6 +45,23 @@ function cfTextEq(sheetId, c0, c1, text, color) {
         booleanRule: {
           condition: { type: "TEXT_EQ", values: [{ userEnteredValue: text }] },
           format: { backgroundColor: color },
+        },
+      },
+    },
+  };
+}
+
+// Whole-row conditional format driven by a custom formula. The formula anchors
+// the status column absolutely and the row relatively to the range's first row.
+function cfCustomFormula(sheetId, c0, c1, formula, format) {
+  return {
+    addConditionalFormatRule: {
+      index: 0,
+      rule: {
+        ranges: [range(sheetId, c0, c1)],
+        booleanRule: {
+          condition: { type: "CUSTOM_FORMULA", values: [{ userEnteredValue: formula }] },
+          format,
         },
       },
     },
@@ -101,6 +123,9 @@ export function projectFormatRequests(sheetId, existingCfCount) {
     // L..O (indices 11..15): <1 red, >=1 green
     cfNumberLess(sheetId, 11, 15, 1, RED),
     cfNumberGte(sheetId, 11, 15, 1, GREEN),
+    // Whole row A..U dark red when Status (col T) = "Should be Deleted".
+    // Added last so it takes top priority over the cell-level rules.
+    cfCustomFormula(sheetId, 0, 21, '=$T2="Should be Deleted"', DELETE_ROW_FORMAT),
   ];
 }
 
@@ -114,5 +139,7 @@ export function propertyFormatRequests(sheetId, existingCfCount) {
     dropdown(sheetId, 6, 9, ["Missing", "Present"]),
     cfTextEq(sheetId, 6, 9, "Missing", RED),
     cfTextEq(sheetId, 6, 9, "Present", GREEN),
+    // Whole row A..O dark red when Status (col M) = "Should be Deleted".
+    cfCustomFormula(sheetId, 0, 15, '=$M2="Should be Deleted"', DELETE_ROW_FORMAT),
   ];
 }
