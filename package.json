@@ -7,6 +7,8 @@
   "scripts": {
     "generate": "node generate-report.mjs",
     "sync": "node sync-sheet.mjs",
+    "migrate": "node migrate-old-data.mjs",
+    "migrate:apply": "node migrate-old-data.mjs --apply",
     "test": "node --test"
   },
   "dependencies": {

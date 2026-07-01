@@ -79,6 +79,17 @@ export async function appendRows(sheets, spreadsheetId, title, rows) {
   });
 }
 
+// Targeted per-cell value writes. Unlike writeGrid this leaves untouched cells
+// (and their formulas) intact — used by the one-time migration to patch only the
+// Notes/Status columns. `data` is an array of { range, values } entries.
+export async function batchUpdateValues(sheets, spreadsheetId, data) {
+  if (!data.length) return;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
+  });
+}
+
 export async function runBatch(sheets, spreadsheetId, requests) {
   if (!requests.length) return;
   await sheets.spreadsheets.batchUpdate({
