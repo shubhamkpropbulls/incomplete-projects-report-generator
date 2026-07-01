@@ -97,7 +97,25 @@ async function syncOne(sheets, spreadsheetId, tabMap, cfg) {
   await writeGrid(sheets, spreadsheetId, cfg.activeTitle, values, cfg.lastCol);
 
   const count = await cfRuleCount(sheets, spreadsheetId, sheetId);
-  await runBatch(sheets, spreadsheetId, cfg.formatReqs(sheetId, count));
+  const reqs = cfg.formatReqs(sheetId, count);
+  // Apply everything except the dropdowns in one batch. Conditional formatting
+  // and the freeze must land even when the dropdowns can't be re-applied.
+  const dropdowns = reqs.filter((r) => r.setDataValidation);
+  const rest = reqs.filter((r) => !r.setDataValidation);
+  await runBatch(sheets, spreadsheetId, rest);
+  // Re-applying dropdowns fails once a column has become a "typed column"
+  // (Google promotes a whole-column dropdown to a column type after the first
+  // run). The dropdown already exists in that case, so tolerate the rejection.
+  try {
+    await runBatch(sheets, spreadsheetId, dropdowns);
+  } catch (err) {
+    const msg = err?.cause?.message || err?.message || "";
+    if (/typed column/i.test(msg)) {
+      console.warn(`  ${cfg.activeTitle}: dropdowns already set as a column type — kept existing.`);
+    } else {
+      throw err;
+    }
+  }
 
   console.log(`  ${cfg.activeTitle}: ${values.length - 1} rows; archived ${archiveToAppend.length}.`);
 }
