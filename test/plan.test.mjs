@@ -73,9 +73,10 @@ test("planTab archive: gone-1 is archived with preserved Notes/Status and resolv
   assert.equal(out.archiveToAppend.length, 1, "exactly 1 row archived");
   const archiveRow = out.archiveToAppend[0];
   assert.equal(archiveRow[PROJECT_ARCHIVE_KEY], "gone-1", "archive key should be gone-1");
-  // PROJECT_ARCHIVE_HEADERS: ["Project", "Project ID", "Notes / Comments", "Status", "Resolved At"]
-  assert.equal(archiveRow[2], "to delete", "archived Notes should be preserved");
-  assert.equal(archiveRow[3], "Should be Deleted", "archived Status should be preserved");
+  // PROJECT_ARCHIVE_HEADERS: Project, Created At, Creator, Link, Missing Data
+  // Summary, Notes / Comments (5), Status (6), Project ID (7), Resolved At (8)
+  assert.equal(archiveRow[5], "to delete", "archived Notes should be preserved");
+  assert.equal(archiveRow[6], "Should be Deleted", "archived Status should be preserved");
   assert.equal(archiveRow[archiveRow.length - 1], "2026-06-30", "last cell should be resolvedAt stamp");
 });
 

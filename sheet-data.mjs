@@ -135,34 +135,54 @@ export function buildSheetValues(headers, records, rowBuilder, preserve) {
   return [headers, ...records.map((rec, i) => rowBuilder(rec, i + 2, preserve))];
 }
 
+// Archive rows keep enough context to understand a resolved item on their own:
+// name, created-at, creator, a working Link (rebuilt from the ID so it stays
+// clickable), the missing-data summary, and the team's notes/status.
 export const PROJECT_ARCHIVE_HEADERS = [
-  "Project", "Project ID", "Notes / Comments", "Status", "Resolved At",
+  "Project", "Created At", "Creator", "Link", "Missing Data Summary",
+  "Notes / Comments", "Status", "Project ID", "Resolved At",
 ];
 export const PROPERTY_ARCHIVE_HEADERS = [
-  "Project Name", "Property Name", "Property ID", "Project ID",
-  "Note / Comments", "Status", "Resolved At",
+  "Project Name", "Project Link", "Property Name", "Link", "Created At",
+  "Created By", "Missing Data Summery", "Note / Comments", "Status",
+  "Property ID", "Project ID", "Resolved At",
 ];
-export const PROJECT_ARCHIVE_KEY = 1;   // Project ID column in archive layout
-export const PROPERTY_ARCHIVE_KEY = 2;  // Property ID column in archive layout
+export const PROJECT_ARCHIVE_KEY = 7;   // Project ID column in archive layout
+export const PROPERTY_ARCHIVE_KEY = 9;  // Property ID column in archive layout
+
+const projectLink = (id) => (id ? `=HYPERLINK("${ADMIN_BASE}/projects/${id}","Link")` : "");
+const propertyLink = (id) => (id ? `=HYPERLINK("${ADMIN_BASE}/properties/${id}","Link")` : "");
 
 export function buildProjectArchiveRow(prevRow, resolvedAt) {
+  const projectId = cell(prevRow[20]);
   return [
-    cell(prevRow[0]),   // Project
-    cell(prevRow[20]),  // Project ID
-    cell(prevRow[18]),  // Notes / Comments
-    cell(prevRow[19]),  // Status
+    cell(prevRow[0]),        // Project
+    cell(prevRow[1]),        // Created At
+    cell(prevRow[2]),        // Creator
+    projectLink(projectId),  // Link (rebuilt so it stays clickable)
+    cell(prevRow[16]),       // Missing Data Summary
+    cell(prevRow[18]),       // Notes / Comments
+    cell(prevRow[19]),       // Status
+    projectId,               // Project ID
     resolvedAt,
   ];
 }
 
 export function buildPropertyArchiveRow(prevRow, resolvedAt) {
+  const propertyId = cell(prevRow[13]);
+  const projectId = cell(prevRow[14]);
   return [
-    cell(prevRow[0]),   // Project Name
-    cell(prevRow[2]),   // Property Name
-    cell(prevRow[13]),  // Property ID
-    cell(prevRow[14]),  // Project ID
-    cell(prevRow[11]),  // Note / Comments
-    cell(prevRow[12]),  // Status
+    cell(prevRow[0]),          // Project Name
+    projectLink(projectId),    // Project Link
+    cell(prevRow[2]),          // Property Name
+    propertyLink(propertyId),  // Link
+    cell(prevRow[4]),          // Created At
+    cell(prevRow[5]),          // Created By
+    cell(prevRow[10]),         // Missing Data Summery
+    cell(prevRow[11]),         // Note / Comments
+    cell(prevRow[12]),         // Status
+    propertyId,                // Property ID
+    projectId,                 // Project ID
     resolvedAt,
   ];
 }

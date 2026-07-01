@@ -79,7 +79,19 @@ async function syncOne(sheets, spreadsheetId, tabMap, cfg) {
   await ensureTab(sheets, spreadsheetId, cfg.archiveTitle, tabMap);
 
   const prevRows = await readTab(sheets, spreadsheetId, cfg.activeTitle);
-  const prevArchive = await readTab(sheets, spreadsheetId, cfg.archiveTitle);
+  let prevArchive = await readTab(sheets, spreadsheetId, cfg.archiveTitle);
+
+  // (Re)write the archive header when the tab is empty or its header no longer
+  // matches the current schema (e.g. the archive layout was expanded). This
+  // discards any rows written under an older layout.
+  const header = prevArchive[0] || [];
+  const headerMatches = prevArchive.length
+    && cfg.archiveHeaders.length === header.length
+    && cfg.archiveHeaders.every((h, i) => String(header[i] ?? "") === h);
+  if (!headerMatches) {
+    await writeGrid(sheets, spreadsheetId, cfg.archiveTitle, [cfg.archiveHeaders], "Z");
+    prevArchive = [cfg.archiveHeaders];
+  }
 
   const { values, archiveToAppend } = planTab({
     records: cfg.records, headers: cfg.headers, cols: cfg.cols,
@@ -88,10 +100,6 @@ async function syncOne(sheets, spreadsheetId, tabMap, cfg) {
     prevRows, prevArchive, resolvedAt: today(),
   });
 
-  // Ensure archive header exists before appending.
-  if (!prevArchive.length) {
-    await writeGrid(sheets, spreadsheetId, cfg.archiveTitle, [cfg.archiveHeaders], "Z");
-  }
   await appendRows(sheets, spreadsheetId, cfg.archiveTitle, archiveToAppend);
 
   await writeGrid(sheets, spreadsheetId, cfg.activeTitle, values, cfg.lastCol);
