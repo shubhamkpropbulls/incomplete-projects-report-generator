@@ -55,12 +55,16 @@ SELECT
   CASE WHEN NULLIF(BTRIM(p.rera_number), '') IS NOT NULL
         OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_num_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_number_status,
+  -- Date rollups only apply to property-level-RERA projects (no project rera_number).
+  -- If the project has its own rera_number, its dates must come from the project too.
   CASE WHEN p.rera_registration_date IS NOT NULL
-        OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c)
+        OR (NULLIF(BTRIM(p.rera_number), '') IS NULL
+            AND COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_registration_status,
   CASE WHEN p.rera_completion_date_first IS NOT NULL
         OR p.rera_completion_date_last IS NOT NULL
-        OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c)
+        OR (NULLIF(BTRIM(p.rera_number), '') IS NULL
+            AND COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_completion_status,
   COALESCE(ac.c, 0)                                             AS accessibility_count,
   COALESCE(pc.c, 0)                                             AS property_count,
@@ -83,10 +87,12 @@ WHERE p.is_active = TRUE
     + (CASE WHEN NULLIF(BTRIM(p.rera_number), '') IS NOT NULL
              OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_num_c, 0) = pc.c) THEN 0 ELSE 1 END)
     + (CASE WHEN p.rera_registration_date IS NOT NULL
-             OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c) THEN 0 ELSE 1 END)
+             OR (NULLIF(BTRIM(p.rera_number), '') IS NULL
+                 AND COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c) THEN 0 ELSE 1 END)
     + (CASE WHEN p.rera_completion_date_first IS NOT NULL
              OR p.rera_completion_date_last IS NOT NULL
-             OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c) THEN 0 ELSE 1 END)
+             OR (NULLIF(BTRIM(p.rera_number), '') IS NULL
+                 AND COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c) THEN 0 ELSE 1 END)
     + (CASE WHEN COALESCE(ac.c, 0) < 3 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(pc.c, 0) < 1 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(jsonb_array_length(p.images), 0)      < 1 THEN 1 ELSE 0 END)
