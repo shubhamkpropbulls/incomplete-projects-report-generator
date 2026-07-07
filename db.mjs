@@ -29,7 +29,16 @@ WITH accessibility_counts AS (
   SELECT project_id, COUNT(*) AS c FROM project_accessibility GROUP BY project_id
 ),
 property_counts AS (
-  SELECT project_id, COUNT(*) AS c FROM property WHERE is_active = TRUE GROUP BY project_id
+  -- c = active properties per project. The rera_*_c columns count how many of those
+  -- active properties carry each RERA field, so the project query can treat a blank
+  -- project-level RERA field as Present when EVERY active property supplies it.
+  SELECT project_id,
+         COUNT(*) AS c,
+         COUNT(*) FILTER (WHERE NULLIF(BTRIM(rera_registration_no), '') IS NOT NULL) AS rera_num_c,
+         COUNT(*) FILTER (WHERE rera_registration_date IS NOT NULL)                   AS rera_reg_c,
+         COUNT(*) FILTER (WHERE rera_completion_date_first IS NOT NULL
+                             OR rera_completion_date_last  IS NOT NULL)               AS rera_comp_c
+  FROM property WHERE is_active = TRUE GROUP BY project_id
 )
 SELECT
   p.id                                                          AS project_id,
@@ -44,11 +53,14 @@ SELECT
   CASE WHEN p.total_area_acres IS NOT NULL AND p.total_area_acres > 0
        THEN 'Present' ELSE 'Missing' END                        AS land_acres_status,
   CASE WHEN NULLIF(BTRIM(p.rera_number), '') IS NOT NULL
+        OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_num_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_number_status,
   CASE WHEN p.rera_registration_date IS NOT NULL
+        OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_registration_status,
   CASE WHEN p.rera_completion_date_first IS NOT NULL
         OR p.rera_completion_date_last IS NOT NULL
+        OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c)
        THEN 'Present' ELSE 'Missing' END                        AS rera_completion_status,
   COALESCE(ac.c, 0)                                             AS accessibility_count,
   COALESCE(pc.c, 0)                                             AS property_count,
@@ -68,10 +80,13 @@ WHERE p.is_active = TRUE
     + (CASE WHEN b.id IS NOT NULL THEN 0 ELSE 1 END)
     + (CASE WHEN p.land_type IS NOT NULL THEN 0 ELSE 1 END)
     + (CASE WHEN p.total_area_acres IS NOT NULL AND p.total_area_acres > 0 THEN 0 ELSE 1 END)
-    + (CASE WHEN NULLIF(BTRIM(p.rera_number), '') IS NOT NULL THEN 0 ELSE 1 END)
-    + (CASE WHEN p.rera_registration_date IS NOT NULL THEN 0 ELSE 1 END)
+    + (CASE WHEN NULLIF(BTRIM(p.rera_number), '') IS NOT NULL
+             OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_num_c, 0) = pc.c) THEN 0 ELSE 1 END)
+    + (CASE WHEN p.rera_registration_date IS NOT NULL
+             OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_reg_c, 0) = pc.c) THEN 0 ELSE 1 END)
     + (CASE WHEN p.rera_completion_date_first IS NOT NULL
-             OR p.rera_completion_date_last IS NOT NULL THEN 0 ELSE 1 END)
+             OR p.rera_completion_date_last IS NOT NULL
+             OR (COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c) THEN 0 ELSE 1 END)
     + (CASE WHEN COALESCE(ac.c, 0) < 3 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(pc.c, 0) < 1 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(jsonb_array_length(p.images), 0)      < 1 THEN 1 ELSE 0 END)
