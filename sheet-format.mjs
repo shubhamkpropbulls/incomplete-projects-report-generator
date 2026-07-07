@@ -117,9 +117,9 @@ export function projectFormatRequests(sheetId, existingCfCount) {
     // D..J: Missing red / Present green
     cfTextEq(sheetId, 3, 10, "Missing", RED),
     cfTextEq(sheetId, 3, 10, "Present", GREEN),
-    // K (index 10): <3 red, >=3 green
-    cfNumberLess(sheetId, 10, 11, 3, RED),
-    cfNumberGte(sheetId, 10, 11, 3, GREEN),
+    // K (index 10): <2 red, >=2 green
+    cfNumberLess(sheetId, 10, 11, 2, RED),
+    cfNumberGte(sheetId, 10, 11, 2, GREEN),
     // L..O (indices 11..15): <1 red, >=1 green
     cfNumberLess(sheetId, 11, 15, 1, RED),
     cfNumberGte(sheetId, 11, 15, 1, GREEN),

@@ -15,7 +15,7 @@ const proj = {
   location_status: "Missing", builder_status: "Present", land_type_status: "Missing",
   land_acres_status: "Missing", rera_number_status: "Missing",
   rera_registration_status: "Missing", rera_completion_status: "Missing",
-  accessibility_count: "4", property_count: "1",
+  accessibility_count: "2", property_count: "1",
   image_count: 0, attachment_count: 0, amenity_count: 0,
 };
 
@@ -25,8 +25,8 @@ test("buildProjectRow has 21 cells with correct anchors", () => {
   assert.equal(row[0], "Acme Towers");
   assert.equal(row[1], "2026-03-01");          // created_at -> yyyy-mm-dd
   assert.equal(row[3], "Missing");             // location_status (D)
-  assert.equal(row[10], 4);                     // accessibility_count numeric (K)
-  assert.equal(row[15], "=IF(D2=\"Missing\",1,0)+IF(E2=\"Missing\",1,0)+IF(F2=\"Missing\",1,0)+IF(G2=\"Missing\",1,0)+IF(H2=\"Missing\",1,0)+IF(I2=\"Missing\",1,0)+IF(J2=\"Missing\",1,0)+IF(K2<3,1,0)+IF(L2<1,1,0)+IF(M2<1,1,0)+IF(N2<1,1,0)+IF(O2<1,1,0)");
+  assert.equal(row[10], 2);                     // accessibility_count numeric (K)
+  assert.equal(row[15], "=IF(D2=\"Missing\",1,0)+IF(E2=\"Missing\",1,0)+IF(F2=\"Missing\",1,0)+IF(G2=\"Missing\",1,0)+IF(H2=\"Missing\",1,0)+IF(I2=\"Missing\",1,0)+IF(J2=\"Missing\",1,0)+IF(K2<2,1,0)+IF(L2<1,1,0)+IF(M2<1,1,0)+IF(N2<1,1,0)+IF(O2<1,1,0)");
   assert.ok(row[16].startsWith("=TEXTJOIN(CHAR(10),TRUE,")); // summary, no _xlfn.
   assert.ok(!row[16].includes("_xlfn"));
   assert.equal(row[17], '=HYPERLINK("https://admin-console.propbulls.in/projects/p1","Link")');

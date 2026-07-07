@@ -115,7 +115,7 @@ const PROJECT_HEADERS = [
   ["Project", 1], ["Created At", 1], ["Creator", 1],
   ["Full Address and Geo Location", 1], ["Builder", 1], ["Land Type", 1],
   ["Land Acres", 1], ["Rera Number", 1], ["Rera Registration ", 1],
-  ["Rera Possession", 1], ["Nearby Location (Min 3)", 1], ["Properties", 1],
+  ["Rera Possession", 1], ["Nearby Transit (Min 2)", 1], ["Properties", 1],
   ["Images (Min 1)", 1], ["Attachements (Min 1) (Floor Plan, Brochure, etc)", 1],
   ["Amenities (Min 1)", 1], ["Missing Data Count", 1], ["Missing Data Summary", 2],
   ["Link", 1], ["Notes / Comments", 3], ["Status", 3], ["Project ID", 1],
@@ -129,7 +129,7 @@ function projectCountFormula(r) {
   return (
     `IF(D${r}="Missing",1,0)+IF(E${r}="Missing",1,0)+IF(F${r}="Missing",1,0)` +
     `+IF(G${r}="Missing",1,0)+IF(H${r}="Missing",1,0)+IF(I${r}="Missing",1,0)` +
-    `+IF(J${r}="Missing",1,0)+IF(K${r}<3,1,0)+IF(L${r}<1,1,0)+IF(M${r}<1,1,0)` +
+    `+IF(J${r}="Missing",1,0)+IF(K${r}<2,1,0)+IF(L${r}<1,1,0)+IF(M${r}<1,1,0)` +
     `+IF(N${r}<1,1,0)+IF(O${r}<1,1,0)`
   );
 }
@@ -144,7 +144,7 @@ function projectSummaryFormula(r) {
     `IF(H${r}="Missing","Missing RERA number",""),` +
     `IF(I${r}="Missing","Missing RERA registration date",""),` +
     `IF(J${r}="Missing","Missing RERA completion date",""),` +
-    `IF(K${r}<3,"Nearby accessibility: "&K${r}&" of 3 required",""),` +
+    `IF(K${r}<2,"Nearby transit: "&K${r}&" of 2 required (metro + train)",""),` +
     `IF(L${r}<1,"No properties added",""),` +
     `IF(M${r}<1,"No images",""),` +
     `IF(N${r}<1,"No attachments",""),` +
@@ -186,7 +186,7 @@ function projectCF(L) {
   return (
     `<conditionalFormatting sqref="A2:U${L}"><cfRule type="expression" dxfId="17" priority="1"><formula>$T2="Should be Deleted"</formula></cfRule></conditionalFormatting>` +
     `<conditionalFormatting sqref="D2:J${L}"><cfRule type="cellIs" dxfId="16" priority="6" operator="equal"><formula>"Missing"</formula></cfRule><cfRule type="cellIs" dxfId="15" priority="7" operator="equal"><formula>"Present"</formula></cfRule></conditionalFormatting>` +
-    `<conditionalFormatting sqref="K2:K${L}"><cfRule type="cellIs" dxfId="14" priority="4" operator="lessThan"><formula>3</formula></cfRule><cfRule type="cellIs" dxfId="13" priority="5" operator="greaterThanOrEqual"><formula>3</formula></cfRule><cfRule type="containsBlanks" dxfId="12" priority="8"><formula>LEN(TRIM(K2))=0</formula></cfRule></conditionalFormatting>` +
+    `<conditionalFormatting sqref="K2:K${L}"><cfRule type="cellIs" dxfId="14" priority="4" operator="lessThan"><formula>2</formula></cfRule><cfRule type="cellIs" dxfId="13" priority="5" operator="greaterThanOrEqual"><formula>2</formula></cfRule><cfRule type="containsBlanks" dxfId="12" priority="8"><formula>LEN(TRIM(K2))=0</formula></cfRule></conditionalFormatting>` +
     `<conditionalFormatting sqref="L2:O${L}"><cfRule type="cellIs" dxfId="11" priority="2" operator="lessThan"><formula>1</formula></cfRule><cfRule type="cellIs" dxfId="10" priority="3" operator="greaterThanOrEqual"><formula>1</formula></cfRule><cfRule type="containsBlanks" dxfId="9" priority="9"><formula>LEN(TRIM(L2))=0</formula></cfRule></conditionalFormatting>`
   );
 }

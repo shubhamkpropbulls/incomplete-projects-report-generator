@@ -26,7 +26,11 @@ export function loadDotEnv() {
 
 export const SQL_PROJECTS = `
 WITH accessibility_counts AS (
-  SELECT project_id, COUNT(*) AS c FROM project_accessibility GROUP BY project_id
+  SELECT project_id,
+         (bool_or(feature_type = 'metro_station'))::int
+       + (bool_or(feature_type = 'railway_station'))::int AS c
+  FROM project_accessibility
+  GROUP BY project_id
 ),
 property_counts AS (
   -- c = active properties per project. The rera_*_c columns count how many of those
@@ -93,7 +97,7 @@ WHERE p.is_active = TRUE
              OR p.rera_completion_date_last IS NOT NULL
              OR (NULLIF(BTRIM(p.rera_number), '') IS NULL
                  AND COALESCE(pc.c, 0) > 0 AND COALESCE(pc.rera_comp_c, 0) = pc.c) THEN 0 ELSE 1 END)
-    + (CASE WHEN COALESCE(ac.c, 0) < 3 THEN 1 ELSE 0 END)
+    + (CASE WHEN COALESCE(ac.c, 0) < 2 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(pc.c, 0) < 1 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(jsonb_array_length(p.images), 0)      < 1 THEN 1 ELSE 0 END)
     + (CASE WHEN COALESCE(jsonb_array_length(p.attachments), 0) < 1 THEN 1 ELSE 0 END)
@@ -145,7 +149,7 @@ export function mockData() {
       location_status: "Missing", builder_status: "Missing", land_type_status: "Missing",
       land_acres_status: "Missing", rera_number_status: "Missing",
       rera_registration_status: "Missing", rera_completion_status: "Missing",
-      accessibility_count: "4", property_count: "1", image_count: 0,
+      accessibility_count: "1", property_count: "1", image_count: 0,
       attachment_count: 0, amenity_count: 0,
     },
     {
@@ -156,7 +160,7 @@ export function mockData() {
       location_status: "Present", builder_status: "Present", land_type_status: "Present",
       land_acres_status: "Present", rera_number_status: "Missing",
       rera_registration_status: "Present", rera_completion_status: "Present",
-      accessibility_count: "5", property_count: "0", image_count: 3,
+      accessibility_count: "2", property_count: "0", image_count: 3,
       attachment_count: 2, amenity_count: 6,
     },
   ];

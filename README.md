@@ -83,7 +83,8 @@ Prints the grids it would write using mock data; makes no network calls.
 **Project** (each missing item = one violation): location (lat/lng + full
 address), builder _(must be set **and** active — soft-deleted builder counts as
 missing)_, land type, land acres, RERA number, RERA registration date, RERA
-completion date, nearby accessibility (min 3), active properties (min 1),
+completion date, nearby transit _(must have **both** a metro station and a
+railway/train station)_, active properties (min 1),
 images, attachments, amenities.
 
 **Property**: total floors, units per floor, active unit configurations.

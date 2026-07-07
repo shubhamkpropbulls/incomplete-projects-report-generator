@@ -38,7 +38,7 @@ const records = [
     rera_number_status: "OK",
     rera_registration_status: "OK",
     rera_completion_status: "OK",
-    accessibility_count: 3,
+    accessibility_count: 2,
     property_count: 2,
     image_count: 1,
     attachment_count: 1,

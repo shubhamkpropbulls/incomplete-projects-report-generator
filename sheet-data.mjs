@@ -4,7 +4,7 @@ import { ADMIN_BASE } from "./db.mjs";
 export const PROJECT_SHEET_HEADERS = [
   "Project", "Created At", "Creator", "Full Address and Geo Location",
   "Builder", "Land Type", "Land Acres", "Rera Number", "Rera Registration ",
-  "Rera Possession", "Nearby Location (Min 3)", "Properties", "Images (Min 1)",
+  "Rera Possession", "Nearby Transit (Min 2)", "Properties", "Images (Min 1)",
   "Attachements (Min 1) (Floor Plan, Brochure, etc)", "Amenities (Min 1)",
   "Missing Data Count", "Missing Data Summary", "Link", "Notes / Comments",
   "Status", "Project ID",
@@ -54,7 +54,7 @@ function toDateStr(v) {
 function projectCountFormula(r) {
   return `=IF(D${r}="Missing",1,0)+IF(E${r}="Missing",1,0)+IF(F${r}="Missing",1,0)`
     + `+IF(G${r}="Missing",1,0)+IF(H${r}="Missing",1,0)+IF(I${r}="Missing",1,0)`
-    + `+IF(J${r}="Missing",1,0)+IF(K${r}<3,1,0)+IF(L${r}<1,1,0)+IF(M${r}<1,1,0)`
+    + `+IF(J${r}="Missing",1,0)+IF(K${r}<2,1,0)+IF(L${r}<1,1,0)+IF(M${r}<1,1,0)`
     + `+IF(N${r}<1,1,0)+IF(O${r}<1,1,0)`;
 }
 
@@ -67,7 +67,7 @@ function projectSummaryFormula(r) {
     + `IF(H${r}="Missing","Missing RERA number",""),`
     + `IF(I${r}="Missing","Missing RERA registration date",""),`
     + `IF(J${r}="Missing","Missing RERA completion date",""),`
-    + `IF(K${r}<3,"Nearby accessibility: "&K${r}&" of 3 required",""),`
+    + `IF(K${r}<2,"Nearby transit: "&K${r}&" of 2 required (metro + train)",""),`
     + `IF(L${r}<1,"No properties added",""),`
     + `IF(M${r}<1,"No images",""),`
     + `IF(N${r}<1,"No attachments",""),`
