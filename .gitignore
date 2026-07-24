@@ -3,3 +3,4 @@ node_modules/
 !template.xlsx
 .env
 service-account.json
+preview-*.md
