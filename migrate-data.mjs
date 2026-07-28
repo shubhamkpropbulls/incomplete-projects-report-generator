@@ -12,8 +12,8 @@ export const OLD_PROPERTY = { id: 14, notes: 12, status: 13 };  // O, M, N
 
 // Allowed Status values per sheet (must match the live dropdowns exactly, or
 // Google rejects the write). Note the casing differs between the two sheets.
-export const PROJECT_STATUSES = new Set(["Not updated", "Updated", "Should be Deleted"]);
-export const PROPERTY_STATUSES = new Set(["Not Updated", "Updated", "Should be Deleted"]);
+export const PROJECT_STATUSES = new Set(["Not updated", "Updated", "Should be Deleted", "Unavailable", "Pre-Rera"]);
+export const PROPERTY_STATUSES = new Set(["Not Updated", "Updated", "Should be Deleted", "Unavailable", "Pre-Rera"]);
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 

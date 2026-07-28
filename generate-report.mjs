@@ -194,7 +194,7 @@ function projectCF(L) {
 function projectDV(L) {
   return (
     `<dataValidations count="3">` +
-    `<dataValidation type="list" allowBlank="1" sqref="T2:T${L}"><formula1>"Not updated,Updated,Should be Deleted"</formula1></dataValidation>` +
+    `<dataValidation type="list" allowBlank="1" sqref="T2:T${L}"><formula1>"Not updated,Updated,Should be Deleted,Unavailable,Pre-Rera"</formula1></dataValidation>` +
     `<dataValidation type="list" allowBlank="1" sqref="D2:J${L}"><formula1>"Missing,Present"</formula1></dataValidation>` +
     `<dataValidation type="custom" allowBlank="1" showDropDown="1" sqref="B2:B${L}"><formula1>OR(NOT(ISERROR(DATEVALUE(B2))), AND(ISNUMBER(B2), LEFT(CELL("format", B2))="D"))</formula1></dataValidation>` +
     `</dataValidations>`
@@ -263,7 +263,7 @@ function propertyDV(L) {
     `<dataValidations count="3">` +
     `<dataValidation type="list" allowBlank="1" sqref="G2:I${L}"><formula1>"Missing,Present"</formula1></dataValidation>` +
     `<dataValidation type="custom" allowBlank="1" showDropDown="1" sqref="E2:E${L}"><formula1>OR(NOT(ISERROR(DATEVALUE(E2))), AND(ISNUMBER(E2), LEFT(CELL("format", E2))="D"))</formula1></dataValidation>` +
-    `<dataValidation type="list" allowBlank="1" sqref="M2:M${L}"><formula1>"Not Updated,Updated,Should be Deleted"</formula1></dataValidation>` +
+    `<dataValidation type="list" allowBlank="1" sqref="M2:M${L}"><formula1>"Not Updated,Updated,Should be Deleted,Unavailable,Pre-Rera"</formula1></dataValidation>` +
     `</dataValidations>`
   );
 }

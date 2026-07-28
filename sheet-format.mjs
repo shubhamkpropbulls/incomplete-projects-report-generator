@@ -111,7 +111,7 @@ export function projectFormatRequests(sheetId, existingCfCount) {
     ...deleteCfRequests(sheetId, existingCfCount),
     freezeHeader(sheetId),
     // Status workflow dropdown (col T = index 19)
-    dropdown(sheetId, 19, 20, ["Not updated", "Updated", "Should be Deleted"]),
+    dropdown(sheetId, 19, 20, ["Not updated", "Updated", "Should be Deleted", "Unavailable", "Pre-Rera"]),
     // Missing/Present dropdowns (cols D..J = indices 3..10)
     dropdown(sheetId, 3, 10, ["Missing", "Present"]),
     // D..J: Missing red / Present green
@@ -134,7 +134,7 @@ export function propertyFormatRequests(sheetId, existingCfCount) {
     ...deleteCfRequests(sheetId, existingCfCount),
     freezeHeader(sheetId),
     // Status workflow dropdown (col M = index 12)
-    dropdown(sheetId, 12, 13, ["Not Updated", "Updated", "Should be Deleted"]),
+    dropdown(sheetId, 12, 13, ["Not Updated", "Updated", "Should be Deleted", "Unavailable", "Pre-Rera"]),
     // Missing/Present dropdowns (cols G..I = indices 6..9)
     dropdown(sheetId, 6, 9, ["Missing", "Present"]),
     cfTextEq(sheetId, 6, 9, "Missing", RED),
