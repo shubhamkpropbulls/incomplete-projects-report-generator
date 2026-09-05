@@ -101,7 +101,10 @@ function refreshReport() {
 
   var answer = ui.alert(
     'Refresh the report?',
-    'This rewrites both data tabs from the database and takes about 12 seconds.\n\n'
+    // Measured 2026-09-05: 12s and 33s on two consecutive runs. Neon can cold
+    // start, so quote the slow end — this number is what tells people how long
+    // to keep their hands off the sheet.
+    'This rewrites both data tabs from the database and takes up to about a minute.\n\n'
       + 'Notes / Comments and Status are kept — they are matched back on by Project ID and '
       + 'Property ID. But anyone typing in the sheet while it runs can lose that edit.\n\n'
       + 'Refresh now?',
