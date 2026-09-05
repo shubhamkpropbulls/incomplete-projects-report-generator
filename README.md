@@ -152,7 +152,24 @@ It also deliberately does *not* use "run whether user is logged on or not" —
 that is session 0, where `notify.vbs` cannot draw a dialog and every crash
 alert silently disappears.
 
-Remove it with
+### Starting, stopping, checking
+
+```powershell
+.\watcher.ps1 status    # task state, pid, last 3 log lines
+.\watcher.ps1 stop
+.\watcher.ps1 start
+```
+
+**Killing node by hand does not stop the watcher** — the repeating trigger
+brings it back in about 45 seconds. Stopping means disabling the task first,
+which is what `watcher.ps1 stop` does (disable, then end, then kill). Verified
+2026-09-05: still stopped after 75 seconds.
+
+While it is stopped the heartbeat goes stale, so after three minutes the sheet
+button refuses to queue anything and tells the clicker the sync machine is
+offline. Nothing hangs and nothing is silently dropped.
+
+Remove the task entirely with
 `schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.
 
 The remaining uncovered case is a reboot where nobody logs back in (an
