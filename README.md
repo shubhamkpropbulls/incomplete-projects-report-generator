@@ -133,24 +133,19 @@ powershell -ExecutionPolicy Bypass -File .\install-watcher.ps1
 schtasks /run /tn "PropBulls incomplete-report watcher"
 ```
 
-That registers the task and starts it. `watch-hidden.vbs` launches node with no
-console window.
+That registers a scheduled task whose only job is to run node with **no console
+window**. `watch-hidden.vbs` is the launcher.
 
-Two things in there are not obvious and were both found the hard way:
-
-- **A repeating trigger, every minute, is what actually keeps it alive.**
-  Task Scheduler's "restart the task if it fails" is registered but does not
-  fire — killing node left `Last Result: -1` and nothing came back. The
-  repeating trigger does not need to detect failure at all: with
-  `MultipleInstancesPolicy = IgnoreNew` the fire is a no-op while the watcher
-  runs, and starts it when it is not. Measured recovery from `taskkill`: ~45s.
-- **`watch-hidden.vbs` must wait on node** (`Run ..., 0, True`). With `False`
-  the script exits the instant node starts, the task reports success, and the
-  scheduler has no idea the watcher is even there.
+**The task is on demand only.** It has no triggers, so it does not start when
+you log in, and no `RestartOnFailure`, so a crash stays crashed. Starting and
+restarting it is a human decision — see below.
 
 It also deliberately does *not* use "run whether user is logged on or not" —
-that is session 0, where `notify.vbs` cannot draw a dialog and every crash
-alert silently disappears.
+that is session 0, where `notify.vbs` cannot draw a dialog and every crash alert
+would silently disappear.
+
+Remove the task entirely with
+`schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.
 
 ### Starting, stopping, checking
 
@@ -160,17 +155,22 @@ alert silently disappears.
 .\watcher.ps1 start
 ```
 
-**Killing node by hand does not stop the watcher** — the repeating trigger
-brings it back in about 45 seconds. Stopping means disabling the task first,
-which is what `watcher.ps1 stop` does (disable, then end, then kill). Verified
-2026-09-05: still stopped after 75 seconds.
+Nothing starts it but you — not a logon, not a crash, not a schedule.
 
-While it is stopped the heartbeat goes stale, so after three minutes the sheet
-button refuses to queue anything and tells the clicker the sync machine is
-offline. Nothing hangs and nothing is silently dropped.
+### What the team sees while it is down
 
-Remove the task entirely with
-`schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.
+The heartbeat stops. After three minutes it counts as stale and the button
+refuses to queue anything, telling the clicker the sync machine is offline.
+
+Inside that three-minute window the button will still queue a request, which
+then goes nowhere: the dialog sits at `queued` and after ~3.5 minutes reports no
+response. Nothing is corrupted, it just fails slowly.
+
+Note that a **hard kill leaves no note in the sheet.** `Watcher stopped.` is
+written on a clean exit or an unhandled exception; a `taskkill` or a power cut
+cannot write anything, so the stale heartbeat is the only signal. Measured
+2026-09-05: after force-killing the process the sheet still read `done` with the
+previous result for the full three minutes.
 
 The remaining uncovered case is a reboot where nobody logs back in (an
 overnight Windows Update restart): the task waits at the lock screen. Locking

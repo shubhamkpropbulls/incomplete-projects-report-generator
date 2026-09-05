@@ -16,44 +16,34 @@ $user     = "$env:USERDOMAIN\$env:USERNAME"
 
 if (-not (Test-Path $launcher)) { throw "Missing $launcher" }
 
-# TimeTrigger every 1 min       -> THE recovery mechanism. RestartOnFailure is
-#                                  registered below but does not actually fire:
-#                                  measured 2026-09-05, killing node left
-#                                  Last Result -1 and nothing restarted. A
-#                                  repeating trigger does not need to detect
-#                                  failure at all - MultipleInstancesPolicy
-#                                  IgnoreNew makes the fire a no-op while the
-#                                  watcher is alive, and starts it when it is
-#                                  not. Worst-case recovery is 1 minute.
+# Deliberately ON DEMAND ONLY, decided 2026-09-05:
+#   - no logon trigger    -> polling never starts by itself; you start it
+#   - no repeating trigger -> nothing resurrects it
+#   - no RestartOnFailure -> a crash stays crashed
+# When it dies, notify.vbs pops a dialog and the watcher writes
+# "Watcher stopped." to the sheet, so the button tells the team the machine is
+# offline instead of queueing into a void. Recovery is a human decision.
+#
 # ExecutionTimeLimit PT0S       -> no "stop the task if it runs longer than 3 days"
 # DisallowStartIfOnBatteries    -> false, so unplugging does not stop the sync
 # StopIfGoingOnBatteries        -> false, same reason
-# RestartOnFailure 1 min x3     -> recovers a hard kill, the one case the
-#                                  desktop dialog structurally cannot report
+# MultipleInstancesPolicy       -> IgnoreNew, so a second start is a no-op
 # LogonTrigger + InteractiveToken -> runs in the logged-on session. NOT
 #                                  "whether user is logged on or not": that is
 #                                  session 0, where notify.vbs cannot draw a
-#                                  dialog and every crash alert vanishes.
+#                                  dialog and every crash notification
+#                                  silently disappears.
+# The task exists only to run node with no console window.
+
 $xml = @"
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Description>Polls the incomplete-data report sheet for a refresh request and runs the sync.</Description>
   </RegistrationInfo>
-  <Triggers>
-    <LogonTrigger>
-      <Enabled>true</Enabled>
-      <UserId>$user</UserId>
-    </LogonTrigger>
-    <TimeTrigger>
-      <StartBoundary>2026-01-01T00:00:00</StartBoundary>
-      <Enabled>true</Enabled>
-      <Repetition>
-        <Interval>PT1M</Interval>
-        <StopAtDurationEnd>false</StopAtDurationEnd>
-      </Repetition>
-    </TimeTrigger>
-  </Triggers>
+  <!-- No triggers: this task runs ON DEMAND ONLY. It does not start at
+       logon and nothing restarts it if it dies. Start it with watcher.ps1. -->
+  <Triggers />
   <Principals>
     <Principal id="Author">
       <UserId>$user</UserId>
@@ -81,10 +71,6 @@ $xml = @"
     <WakeToRun>false</WakeToRun>
     <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
     <Priority>7</Priority>
-    <RestartOnFailure>
-      <Interval>PT1M</Interval>
-      <Count>3</Count>
-    </RestartOnFailure>
   </Settings>
   <Actions Context="Author">
     <Exec>
@@ -105,7 +91,7 @@ Remove-Item $xmlPath -Force
 
 Write-Host ""
 Write-Host "Registered '$taskName'." -ForegroundColor Green
-Write-Host "Start it now with:  schtasks /run /tn `"$taskName`""
+Write-Host "It does NOT start on its own. Start it with:  .\watcher.ps1 start"
 Write-Host "Then confirm it is alive: the _control!B4 heartbeat should move within a minute,"
 Write-Host "and logs\watch-<today>.log should get a fresh '--- watcher starting ---' line."
 Write-Host "There will be NO console window - that is intentional."
