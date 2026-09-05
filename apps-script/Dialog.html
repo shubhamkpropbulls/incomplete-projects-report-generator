@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      body {
+        font-family: Roboto, Arial, sans-serif;
+        font-size: 14px;
+        color: #202124;
+        margin: 0;
+        padding: 20px;
+      }
+      .row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        min-height: 72px;
+      }
+      .spinner {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        border: 2px solid #dadce0;
+        border-top-color: #1a73e8;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .dot {
+        flex: none;
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 18px;
+        color: #fff;
+        font-size: 12px;
+      }
+      .dot.ok {
+        background: #188038;
+      }
+      .dot.bad {
+        background: #d93025;
+      }
+      #message {
+        line-height: 1.45;
+      }
+      #hint {
+        color: #5f6368;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .actions {
+        margin-top: 18px;
+        text-align: right;
+      }
+      button {
+        font: inherit;
+        padding: 7px 18px;
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+      }
+      button.primary {
+        background: #1a73e8;
+        border-color: #1a73e8;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <div id="icon" class="spinner"></div>
+      <div>
+        <div id="message">Refresh queued…</div>
+        <div id="hint">The sync machine picks this up within 15 seconds.</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="close" onclick="google.script.host.close()">Close</button>
+    </div>
+
+    <script>
+      // The dialog cannot wait on an HTTP response — nothing was called. It
+      // watches the same control cells the watcher writes back.
+      var POLL_MS = 2000;
+      // A real sync takes ~12s, so this is only ever a backstop. It has to sit
+      // ABOVE Code.gs's HEARTBEAT_STALE_MS (180s) or the "machine stopped
+      // responding" check below could never fire and every failure would land
+      // on the vaguer timeout message instead. 180s is itself deliberate: the
+      // watcher's 429 back-off caps at 2 minutes and may legitimately delay a
+      // heartbeat that long. Enforced by test/contract.test.mjs.
+      var TIMEOUT_MS = 210000;
+      var startedAt = Date.now();
+      var timer = null;
+
+      function stop() {
+        if (timer) clearInterval(timer);
+        timer = null;
+      }
+
+      function render(icon, message, hint) {
+        document.getElementById('icon').className = icon;
+        document.getElementById('message').textContent = message;
+        document.getElementById('hint').textContent = hint || '';
+      }
+
+      function finish(ok, message, hint) {
+        stop();
+        render(ok ? 'dot ok' : 'dot bad', message, hint);
+        document.getElementById('icon').textContent = ok ? '✓' : '!';
+        document.getElementById('close').className = 'primary';
+      }
+
+      function onState(s) {
+        if (!timer) return;
+
+        if (s.state === 'done') {
+          finish(true, s.message || 'Done.', 'The tabs above are up to date.');
+          return;
+        }
+        if (s.state === 'error') {
+          finish(false, s.message || 'The refresh failed.', 'Ask Shubham to check the log on the sync machine.');
+          return;
+        }
+        if (s.state === 'running') {
+          render('spinner', s.message || 'Refreshing…', 'Rewriting both tabs. Please do not type in the sheet.');
+        }
+
+        // Caught mid-run: no point waiting out the full timeout.
+        if (s.heartbeatStale) {
+          finish(false, 'The sync machine stopped responding.', 'Nothing may have been written. Ask Shubham to check it.');
+          return;
+        }
+
+        if (Date.now() - startedAt > TIMEOUT_MS) {
+          finish(false, 'No response from the sync machine.', 'It may be offline. Nothing was changed.');
+        }
+      }
+
+      function onFailure(err) {
+        finish(false, 'Could not read the sync status.', String(err && err.message ? err.message : err));
+      }
+
+      function poll() {
+        google.script.run.withSuccessHandler(onState).withFailureHandler(onFailure).getSyncState();
+      }
+
+      timer = setInterval(poll, POLL_MS);
+      poll();
+    </script>
+  </body>
+</html>

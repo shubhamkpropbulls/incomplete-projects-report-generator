@@ -78,6 +78,150 @@ Prints the grids it would write using mock data; makes no network calls.
   the few seconds the script runs could be overwritten.
 - The `.xlsx` generator (`npm run generate`) is kept as an offline fallback.
 
+## Refresh button in the sheet
+
+The team can refresh the report themselves from **PropBulls → Refresh report**
+in the sheet's menu, instead of asking someone to run `npm run sync`.
+
+### How it works
+
+The button does not run the sync. Google Apps Script runs on Google's servers
+and has no PostgreSQL driver, so it cannot reach the database at all.
+
+Instead the sheet is a mailbox. The button writes a request token into a hidden
+`_control` tab. A watcher on the sync machine polls that one cell every 15
+seconds over an outbound HTTPS call — the same direction `npm run sync` already
+calls — and when it sees a valid token it runs `sync-sheet.mjs` as a child
+process and writes the result back. **Nothing inbound is ever opened on the sync
+machine**, which matters because it holds the production `DATABASE_URL` and the
+service-account key.
+
+A modal dialog in the sheet polls the same cells, so the clicker sees
+`queued → running → done` with the row counts.
+
+### The `_control` tab
+
+Hidden, labels in column A, values in column B.
+
+| Cell | Label     | Written by  | Value                                            |
+| ---- | --------- | ----------- | ------------------------------------------------ |
+| B1   | Request   | Apps Script | `SYNC <ISO8601> <8 hex>`, cleared by the watcher |
+| B2   | State     | watcher     | `idle` / `queued` / `running` / `done` / `error` |
+| B3   | Message   | watcher     | the sentence shown in the dialog                 |
+| B4   | Heartbeat | watcher     | ISO8601, rewritten every 60s                     |
+| B5   | Last run  | watcher     | ISO8601 of the last successful sync              |
+
+Hidden is tidiness, not security — anyone with edit access can unhide it. The
+real defence is the token format: a stray keystroke or a pasted column does not
+match, so the watcher clears it and reports `Ignored unrecognised value` without
+running anything.
+
+Both data tabs also carry a plain `Last synced …` stamp (project `W1`, property
+`R1`), outside everything `writeGrid` touches, so nobody has to open a dialog to
+see how fresh the numbers are.
+
+### Running the watcher
+
+```bash
+npm run watch          # foreground, logs to the terminal AND to logs/
+```
+
+Foreground is the debug path — it dies with the terminal. For 24/7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-watcher.ps1
+schtasks /run /tn "PropBulls incomplete-report watcher"
+```
+
+That registers a scheduled task whose only job is to run node with **no console
+window**. `watch-hidden.vbs` is the launcher.
+
+**The task is on demand only.** It has no triggers, so it does not start when
+you log in, and no `RestartOnFailure`, so a crash stays crashed. Starting and
+restarting it is a human decision — see below.
+
+It also deliberately does *not* use "run whether user is logged on or not" —
+that is session 0, where `notify.vbs` cannot draw a dialog and every crash alert
+would silently disappear.
+
+Remove the task entirely with
+`schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.
+
+### Starting, stopping, checking
+
+```powershell
+.\watcher.ps1 status    # task state, pid, last 3 log lines
+.\watcher.ps1 stop
+.\watcher.ps1 start
+```
+
+Nothing starts it but you — not a logon, not a crash, not a schedule.
+
+### What the team sees while it is down
+
+The heartbeat stops. After three minutes it counts as stale and the button
+refuses to queue anything, telling the clicker the sync machine is offline.
+
+Inside that three-minute window the button will still queue a request, which
+then goes nowhere: the dialog sits at `queued` and after ~3.5 minutes reports no
+response. Nothing is corrupted, it just fails slowly.
+
+Note that a **hard kill leaves no note in the sheet.** `Watcher stopped.` is
+written on a clean exit or an unhandled exception; a `taskkill` or a power cut
+cannot write anything, so the stale heartbeat is the only signal. Measured
+2026-09-05: after force-killing the process the sheet still read `done` with the
+previous result for the full three minutes.
+
+The remaining uncovered case is a reboot where nobody logs back in (an
+overnight Windows Update restart): the task waits at the lock screen. Locking
+the machine is fine — a locked session keeps running processes.
+
+Three ways to tell it is alive, in order of convenience:
+
+1. `_control!B4` heartbeat moving.
+2. The hourly `alive` line in `logs/watch-<date>.log`.
+3. Task Manager.
+
+If it is not running, the button refuses to queue anything and says the sync
+machine looks offline, rather than appearing to do nothing.
+
+Tuning, all optional env vars: `POLL_MS` (15000), `HEARTBEAT_MS` (60000),
+`MIN_GAP_MS` (120000 — the shortest gap between two syncs, so four impatient
+clicks do not queue four runs).
+
+### When something goes wrong
+
+- A crash, a failed sync, or five consecutive Sheets errors pops a **desktop
+  dialog** on the sync machine (`notify.vbs`). A hard kill — `taskkill`, power
+  loss, machine off — cannot report itself; Task Scheduler restarts it and the
+  gap shows in the log.
+- `logs/watch-<date>.log` keeps 14 days: startup config, every decision, every
+  sync with its full stdout and stderr, and every failure with its stack.
+  Credentials are stripped from everything written there, so it is safe to
+  paste into an issue.
+
+### One-time setup
+
+```bash
+node setup-control.mjs   # creates and hides the _control tab
+```
+
+Then paste `apps-script/Code.gs` and `apps-script/Dialog.html` into the sheet's
+Apps Script project (Extensions → Apps Script; the HTML file must be named
+exactly `Dialog`). **Those files are the source of truth and there is no
+automatic sync** — re-paste after every edit.
+
+`test/contract.test.mjs` guards the constants that are duplicated across the two
+runtimes. If the token format or the cell map drifts, a test fails instead of
+the button silently doing nothing.
+
+### Caution
+
+A refresh rewrites both data tabs. Notes / Comments and Status are kept, matched
+back on by `Project ID` and `Property ID`, but anyone typing in the sheet while
+it runs can lose that edit. The button confirms first for exactly this reason.
+Observed runtimes: 12s and 33s — Neon can cold start.
+
 ## Rules checked
 
 **Project** (each missing item = one violation): location (lat/lng + full
@@ -99,11 +243,11 @@ excluded.
   inline their URL so they still open admin-console.
 - Visible ID columns are appended for joining later:
   - Project sheet → `Project ID` (column U)
-  - Property sheet → `Property ID` + `Project ID` (columns O, P)
+  - Property sheet → `Property ID` + `Project ID` (columns N, O)
 - Stale per-user saved filter views are dropped.
 
-Resulting layout: project sheet = 21 columns (A–U), property sheet = 16 columns
-(A–P).
+Resulting layout: project sheet = 21 columns (A–U), property sheet = 15 columns
+(A–O).
 
 ## Files
 

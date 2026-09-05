@@ -10,9 +10,12 @@
     "preview": "node preview-sync.mjs",
     "migrate": "node migrate-old-data.mjs",
     "migrate:apply": "node migrate-old-data.mjs --apply",
-    "test": "node --test"
+    "test": "node --test",
+    "watch": "node watch-sheet.mjs",
+    "setup:control": "node setup-control.mjs"
   },
   "dependencies": {
+    "google-auth-library": "^10.9.0",
     "googleapis": "^173.0.0",
     "jszip": "^3.10.1",
     "pg": "^8.13.1"

@@ -1,0 +1,78 @@
+// @ts-check
+import { spawn } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import process from "node:process";
+import { redact } from "./redact.mjs";
+
+/**
+ * Desktop dialog on the laptop running the watcher.
+ *
+ * Uses wscript.exe + notify.vbs, not PowerShell. Measured on this machine
+ * 2026-09-05: spawning powershell.exe with `detached: true` (DETACHED_PROCESS)
+ * gives it no console, and it exits immediately without ever drawing the box —
+ * the caller sees a clean spawn and the user sees nothing. wscript.exe is a
+ * GUI-subsystem program, so detached works, it survives the watcher dying, and
+ * there is no Add-Type JIT delay.
+ *
+ * This only renders in a logged-on desktop session. If the scheduled task is
+ * ever switched to "Run whether user is logged on or not" it lands in session 0
+ * and every dialog silently disappears.
+ */
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const VBS = join(__dirname, "notify.vbs");
+
+export const SUPPRESS_MS = 10 * 60 * 1000;
+
+/** MsgBox truncates very long strings; keep it readable and point at the log. */
+const MAX_MESSAGE = 800;
+
+/** @type {Map<string, number>} */
+const lastShown = new Map();
+
+/**
+ * @param {string} title
+ * @param {unknown} message
+ * @param {{ now?: number, suppressMs?: number }} [opts]
+ * @returns {boolean} whether a dialog was actually spawned
+ */
+export function notify(title, message, { now = Date.now(), suppressMs = SUPPRESS_MS } = {}) {
+  const safeTitle = redact(title);
+  let safeMessage = redact(message);
+  if (safeMessage.length > MAX_MESSAGE) {
+    safeMessage = `${safeMessage.slice(0, MAX_MESSAGE)}\n\n(truncated — see logs/)`;
+  }
+
+  // A flapping failure would otherwise stack dialogs across the desktop.
+  const key = `${safeTitle} ${safeMessage}`;
+  const previous = lastShown.get(key);
+  if (previous !== undefined && now - previous < suppressMs) return false;
+  lastShown.set(key, now);
+
+  if (process.platform !== "win32") return false;
+
+  // Arguments, not string interpolation and not the environment: Node quotes
+  // argv correctly for Windows, so error text carrying quotes, % or backslashes
+  // cannot break out. This process can reach the production database.
+  const child = spawn("wscript.exe", [VBS, safeTitle, safeMessage], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return true;
+}
+
+/** Test hook — the suppression map is process-global. */
+export function resetNotifyHistory() {
+  lastShown.clear();
+}
+
+// Run directly: node notify.mjs "title" "message"
+// fileURLToPath, not string surgery on import.meta.url — on Windows the URL is
+// file:///C:/... and hand-built comparisons silently never match.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [, , title = "Test", message = "Test message"] = process.argv;
+  const shown = notify(title, message);
+  console.log(shown ? "Dialog spawned." : "Not shown (suppressed or non-Windows).");
+}

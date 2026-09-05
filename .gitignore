@@ -4,3 +4,7 @@ node_modules/
 .env
 service-account.json
 preview-*.md
+
+# watcher runtime artefacts
+.watch-state.json
+logs/
