@@ -52,3 +52,36 @@ export const TOKEN_RE = /^SYNC \d{4}-\d{2}-\d{2}T[\d:.]+Z [0-9a-f]{8}$/;
 export function makeToken(now = new Date()) {
   return `SYNC ${now.toISOString()} ${randomBytes(4).toString("hex")}`;
 }
+
+/**
+ * A plain "last synced" stamp on the data tabs themselves, so nobody has to
+ * open a dialog or unhide `_control` to know how fresh the numbers are.
+ *
+ * Both cells sit outside everything writeGrid touches. Verified against the
+ * live sheet 2026-09-05: the project tab is 21 columns (A-U) and the property
+ * tab is 15 (A-O) — note the README claims 16 (A-P), which is wrong — and
+ * sheets-client.mjs:56-70 writes A1 across the data width then clears only
+ * A<firstEmpty>:<lastCol>. Nothing reaches column W or R.
+ */
+export const STAMP_CELLS = [
+  { tab: "Missing Project Data", cell: "W1" },
+  { tab: "Missing Property Data", cell: "R1" },
+];
+
+/**
+ * The team is in India and reads this cell directly, so format for a human in
+ * IST rather than dumping the ISO string the control tab carries.
+ * @param {Date} [at]
+ */
+export function stampText(at = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(at);
+  return `Last synced ${parts} IST`;
+}

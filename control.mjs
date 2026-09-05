@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import process from "node:process";
 import { JWT } from "google-auth-library";
 import { loadDotEnv } from "./env.mjs";
-import { CELL, CONTROL_RANGE } from "./control-contract.mjs";
+import { CELL, CONTROL_RANGE, STAMP_CELLS } from "./control-contract.mjs";
 
 /**
  * Sheets access for the watcher.
@@ -84,16 +84,38 @@ export async function readControl() {
 }
 
 /**
+ * @param {{ range: string, values: string[][] }[]} data
+ */
+async function writeValues(data) {
+  if (!data.length) return;
+  await call("POST", "/values:batchUpdate", { valueInputOption: "RAW", data });
+}
+
+/**
  * Write only the named cells. `null` clears one.
  * @param {Partial<Record<keyof typeof CELL, string | null>>} patch
  */
 export async function writeControl(patch) {
-  const data = Object.entries(patch)
-    .filter(([key, value]) => key in CELL && value !== undefined)
-    .map(([key, value]) => ({
-      range: `'_control'!${CELL[/** @type {keyof typeof CELL} */ (key)]}`,
-      values: [[value === null ? "" : String(value)]],
-    }));
-  if (!data.length) return;
-  await call("POST", "/values:batchUpdate", { valueInputOption: "RAW", data });
+  await writeValues(
+    Object.entries(patch)
+      .filter(([key, value]) => key in CELL && value !== undefined)
+      .map(([key, value]) => ({
+        range: `'_control'!${CELL[/** @type {keyof typeof CELL} */ (key)]}`,
+        values: [[value === null ? "" : String(value)]],
+      })),
+  );
+}
+
+/**
+ * The human-readable stamp on the data tabs. Separate from writeControl because
+ * these cells live on the tabs the team actually looks at, not the hidden one.
+ * @param {string} text
+ */
+export async function writeStamps(text) {
+  await writeValues(
+    STAMP_CELLS.map(({ tab, cell }) => ({
+      range: `'${tab}'!${cell}`,
+      values: [[text]],
+    })),
+  );
 }

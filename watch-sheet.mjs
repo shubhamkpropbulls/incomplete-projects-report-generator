@@ -5,8 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 
-import { readControl, writeControl } from "./control.mjs";
-import { STATE, STOPPED_MESSAGE } from "./control-contract.mjs";
+import { readControl, writeControl, writeStamps } from "./control.mjs";
+import { STATE, STOPPED_MESSAGE, stampText } from "./control-contract.mjs";
 import { decide, summarise } from "./watch-decide.mjs";
 import { loadDotEnv } from "./env.mjs";
 import { configureLogger, info, warn, error, logBlock, pruneOldLogs, closeLogger } from "./log.mjs";
@@ -131,13 +131,21 @@ async function handleRun(/** @type {string} */ token) {
 
   if (code === 0) {
     const message = summarise(stdout);
-    persisted.lastRunAt = Date.now();
+    const finishedAt = new Date();
+    persisted.lastRunAt = finishedAt.getTime();
     saveState();
     await writeControl({
       state: STATE.done,
       message,
-      lastRun: new Date().toISOString(),
+      lastRun: finishedAt.toISOString(),
     });
+    // Best effort: the sync itself succeeded, so a failure to stamp the visible
+    // cells must not turn a good run into a reported error.
+    try {
+      await writeStamps(stampText(finishedAt));
+    } catch (err) {
+      warn(`Could not write the last-synced stamp: ${err}`);
+    }
     info(`Sync finished in ${ms}ms — ${message}`);
     return;
   }
