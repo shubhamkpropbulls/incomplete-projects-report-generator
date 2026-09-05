@@ -34,6 +34,15 @@ const num = (/** @type {string} */ name, /** @type {number} */ fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+/**
+ * Quota headroom, in case anyone wonders whether polling can be faster.
+ * Google's documented Sheets API v4 limits are 60 read and 60 write requests
+ * per minute per user per project, 300 per project, and no per-day cap at all.
+ * At POLL_MS=15000 the watcher uses 4 reads/min and 1 write/min. The service
+ * account is "the user", so it shares that bucket with the sync it spawns
+ * (~25-30 requests over a few seconds); combined peak stays under a quarter of
+ * the limit. A 429 is backed off silently rather than reported to the team.
+ */
 const CONFIG = {
   pollMs: num("POLL_MS", 15_000),
   heartbeatMs: num("HEARTBEAT_MS", 60_000),
