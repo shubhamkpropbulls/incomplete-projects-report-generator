@@ -126,8 +126,26 @@ see how fresh the numbers are.
 npm run watch          # foreground, logs to the terminal AND to logs/
 ```
 
-Foreground is the debug path — it dies with the terminal. For 24/7 it runs from
-Task Scheduler via `watch-hidden.vbs`, which starts it with no console window.
+Foreground is the debug path — it dies with the terminal. For 24/7:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-watcher.ps1
+schtasks /run /tn "PropBulls incomplete-report watcher"
+```
+
+That registers a logon-triggered task running `watch-hidden.vbs`, which starts
+node with no console window. The script exists because four Task Scheduler
+defaults each break a 24/7 watcher: the 3-day execution limit, the two
+battery conditions, and no restart-on-failure. It also deliberately does *not*
+use "run whether user is logged on or not" — that is session 0, where
+`notify.vbs` cannot draw a dialog and every crash alert silently disappears.
+
+Remove it with
+`schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.
+
+The remaining uncovered case is a reboot where nobody logs back in (an
+overnight Windows Update restart): the task waits at the lock screen. Locking
+the machine is fine — a locked session keeps running processes.
 
 Three ways to tell it is alive, in order of convenience:
 
