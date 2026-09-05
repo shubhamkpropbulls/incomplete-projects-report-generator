@@ -133,12 +133,24 @@ powershell -ExecutionPolicy Bypass -File .\install-watcher.ps1
 schtasks /run /tn "PropBulls incomplete-report watcher"
 ```
 
-That registers a logon-triggered task running `watch-hidden.vbs`, which starts
-node with no console window. The script exists because four Task Scheduler
-defaults each break a 24/7 watcher: the 3-day execution limit, the two
-battery conditions, and no restart-on-failure. It also deliberately does *not*
-use "run whether user is logged on or not" — that is session 0, where
-`notify.vbs` cannot draw a dialog and every crash alert silently disappears.
+That registers the task and starts it. `watch-hidden.vbs` launches node with no
+console window.
+
+Two things in there are not obvious and were both found the hard way:
+
+- **A repeating trigger, every minute, is what actually keeps it alive.**
+  Task Scheduler's "restart the task if it fails" is registered but does not
+  fire — killing node left `Last Result: -1` and nothing came back. The
+  repeating trigger does not need to detect failure at all: with
+  `MultipleInstancesPolicy = IgnoreNew` the fire is a no-op while the watcher
+  runs, and starts it when it is not. Measured recovery from `taskkill`: ~45s.
+- **`watch-hidden.vbs` must wait on node** (`Run ..., 0, True`). With `False`
+  the script exits the instant node starts, the task reports success, and the
+  scheduler has no idea the watcher is even there.
+
+It also deliberately does *not* use "run whether user is logged on or not" —
+that is session 0, where `notify.vbs` cannot draw a dialog and every crash
+alert silently disappears.
 
 Remove it with
 `schtasks /delete /tn "PropBulls incomplete-report watcher" /f`.

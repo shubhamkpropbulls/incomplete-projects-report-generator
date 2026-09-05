@@ -244,6 +244,20 @@ async function main() {
       `lastRunAt=${persisted.lastRunAt ? new Date(persisted.lastRunAt).toISOString() : "never"}`,
   );
 
+  // Clear our own tombstone. A restart (Task Scheduler's repeating trigger
+  // picking up after a crash) otherwise leaves the sheet reading
+  // "error / Watcher stopped." indefinitely, even though the watcher is back.
+  // Only that exact state is cleared — a real sync result stays visible.
+  try {
+    const control = await readControl();
+    if (control.state === STATE.error && control.message === STOPPED_MESSAGE) {
+      await writeControl({ state: STATE.idle, message: "Watcher running." });
+      info("Cleared a stale 'Watcher stopped.' from a previous run.");
+    }
+  } catch (err) {
+    warn(`Could not check the control tab at startup: ${err}`);
+  }
+
   for (const signal of /** @type {const} */ (["SIGINT", "SIGTERM"])) {
     process.on(signal, () => {
       shutdown(signal).finally(() => process.exit(0));

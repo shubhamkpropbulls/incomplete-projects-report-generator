@@ -16,6 +16,15 @@ $user     = "$env:USERDOMAIN\$env:USERNAME"
 
 if (-not (Test-Path $launcher)) { throw "Missing $launcher" }
 
+# TimeTrigger every 1 min       -> THE recovery mechanism. RestartOnFailure is
+#                                  registered below but does not actually fire:
+#                                  measured 2026-09-05, killing node left
+#                                  Last Result -1 and nothing restarted. A
+#                                  repeating trigger does not need to detect
+#                                  failure at all - MultipleInstancesPolicy
+#                                  IgnoreNew makes the fire a no-op while the
+#                                  watcher is alive, and starts it when it is
+#                                  not. Worst-case recovery is 1 minute.
 # ExecutionTimeLimit PT0S       -> no "stop the task if it runs longer than 3 days"
 # DisallowStartIfOnBatteries    -> false, so unplugging does not stop the sync
 # StopIfGoingOnBatteries        -> false, same reason
@@ -36,6 +45,14 @@ $xml = @"
       <Enabled>true</Enabled>
       <UserId>$user</UserId>
     </LogonTrigger>
+    <TimeTrigger>
+      <StartBoundary>2026-01-01T00:00:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <Repetition>
+        <Interval>PT1M</Interval>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">
