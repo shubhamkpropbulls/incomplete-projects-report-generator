@@ -1,28 +1,14 @@
 // @ts-check
-import { readFileSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import process from "node:process";
 import pg from "pg";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { loadDotEnv } from "./env.mjs";
 
 export const ADMIN_BASE = "https://admin-console.propbulls.in";
 
-/** Minimal .env loader (KEY=VALUE lines); does not override existing env vars. */
-export function loadDotEnv() {
-  const f = join(__dirname, ".env");
-  if (!existsSync(f)) return;
-  for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
-    const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
-    if (!m || line.trimStart().startsWith("#")) continue;
-    let v = m[2].trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-      v = v.slice(1, -1);
-    }
-    if (!(m[1] in process.env)) process.env[m[1]] = v;
-  }
-}
+// Re-exported so existing importers (migrate-old-data.mjs, preview-sync.mjs)
+// keep working; the implementation moved to env.mjs so the watcher can load
+// config without pulling in pg.
+export { loadDotEnv };
 
 export const SQL_PROJECTS = `
 WITH accessibility_counts AS (
